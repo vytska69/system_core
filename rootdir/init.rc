@@ -339,11 +339,13 @@ on init
     write /proc/sys/net/ipv4/ping_group_range "0 2147483647"
     write /proc/sys/net/unix/max_dgram_qlen 600
 
-    # Assign reasonable ceiling values for socket rcv/snd buffers.
-    # These should almost always be overridden by the target per the
-    # the corresponding technology maximums.
-    write /proc/sys/net/core/rmem_max  262144
-    write /proc/sys/net/core/wmem_max  262144
+    # Assign reasonable ceiling values for socket rcv/snd buffers
+    # Recommend to use a lower value for low memory devices
+    write /proc/sys/net/core/rmem_max  8388608
+    write /proc/sys/net/core/wmem_max  8388608
+    # Assign TCP write/read memory size.
+    write /proc/sys/net/ipv4/tcp_rmem "2097152 4194304 8388608"
+    write /proc/sys/net/ipv4/tcp_wmem "262144 524288 8388608"
 
     # reflect fwmark from incoming packets onto generated replies
     write /proc/sys/net/ipv4/fwmark_reflect 1
@@ -494,6 +496,7 @@ on init
     # Start logd before any other services run to ensure we capture all of their logs.
     start logd
     # Start lmkd before any other services run so that it can register them
+    write /proc/sys/vm/watermark_boost_factor 0
     chown root system /sys/module/lowmemorykiller/parameters/adj
     chmod 0664 /sys/module/lowmemorykiller/parameters/adj
     chown root system /sys/module/lowmemorykiller/parameters/minfree
@@ -1079,6 +1082,9 @@ on boot
     # are not aware of using fsync()/sync() to prepare sudden power-cut.
     write /dev/sys/fs/by-name/userdata/cp_interval 200
     write /dev/sys/fs/by-name/userdata/gc_urgent_sleep_time 50
+
+    # set readahead multiplier for POSIX_FADV_SEQUENTIAL files
+    write /dev/sys/fs/by-name/userdata/seq_file_ra_mul 16
 
     # limit discard size to 128MB in order to avoid long IO latency
     # for filesystem tuning first
